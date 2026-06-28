@@ -9,6 +9,8 @@
 <link href="https://fonts.googleapis.com/css2?family=Archivo:wght@700;800;900&family=DM+Mono:wght@400;500&family=DM+Sans:opsz,wght@9..40,400;9..40,600;9..40,700&display=swap" rel="stylesheet"/>
 <style>
 :root{
+  --hdr-h:185px;     /* sticky header height — kept in sync with JS on load/resize
+                         so anchor-jump scrolling never lands behind it again */
   --bg:#08080f;
   --s1:#111118;     /* card surface */
   --s2:#18181f;     /* elevated */
@@ -38,18 +40,23 @@ body{margin:0;background:var(--bg);color:var(--tx);font-family:"DM Sans",system-
   padding-bottom:calc(84px + env(safe-area-inset-bottom));}
 .wrap{max-width:var(--maxw);margin:0 auto;padding:0 15px;}
 
+/* Section jump-targets — offset by the *actual* header height (set via JS),
+   so tapping a bottom-nav tab never lands a section behind the sticky header. */
+.anchor-mark{scroll-margin-top:var(--hdr-h);}
+
 /* ── HEADER ── */
 .hdr{position:sticky;top:0;z-index:50;
   background:rgba(8,8,15,.88);backdrop-filter:blur(18px) saturate(160%);
   border-bottom:1px solid var(--bd);
   padding-top:env(safe-area-inset-top);}
-.hdr-inner{max-width:var(--maxw);margin:0 auto;padding:13px 15px;
-  display:flex;align-items:center;gap:10px;}
-.hdr-title{font-family:"Archivo",sans-serif;font-weight:900;font-size:15px;
-  letter-spacing:.03em;text-transform:uppercase;line-height:1.15;color:var(--tx);}
-.hdr-title small{display:block;font-family:"DM Mono",monospace;font-weight:400;
-  font-size:12px;letter-spacing:.16em;color:var(--tx3);margin-bottom:2px;}
-.hdr-status{margin-left:auto;display:flex;align-items:center;gap:7px;
+.hdr-inner{max-width:var(--maxw);margin:0 auto;padding:12px 15px 13px;}
+.hdr-eyebrow{margin:0 0 2px;font-family:"DM Mono",monospace;font-weight:400;
+  font-size:12px;letter-spacing:.15em;color:var(--tx3);text-transform:uppercase;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.hdr-title{margin:0 0 11px;font-family:"Archivo",sans-serif;font-weight:900;
+  font-size:18px;letter-spacing:.02em;text-transform:uppercase;line-height:1.18;color:var(--tx);}
+.hdr-meta{display:flex;align-items:center;gap:10px;}
+.hdr-status{display:flex;align-items:center;gap:7px;
   font-family:"DM Mono",monospace;font-size:13px;color:var(--tx3);}
 .vbadge{font-family:"DM Mono",monospace;font-size:11px;font-weight:500;
   color:var(--tx3);background:var(--s2);border:1px solid var(--bd2);
@@ -57,11 +64,27 @@ body{margin:0;background:var(--bg);color:var(--tx);font-family:"DM Sans",system-
 .pulse{width:8px;height:8px;border-radius:50%;background:var(--tx3);flex:0 0 auto;}
 .is-live .pulse{background:var(--live);animation:blink 1.5s infinite;}
 @keyframes blink{0%,100%{opacity:1}50%{opacity:.25}}
-.rfbtn{width:40px;height:40px;border-radius:10px;border:1px solid var(--bd2);
-  background:var(--s2);color:var(--tx2);cursor:pointer;display:grid;place-items:center;}
-.rfbtn svg{width:18px;height:18px;}
+.rfbtn{width:38px;height:38px;border-radius:10px;border:1px solid var(--bd2);
+  background:var(--s2);color:var(--tx2);cursor:pointer;display:grid;place-items:center;
+  margin-left:auto;flex:0 0 auto;}
+.rfbtn svg{width:17px;height:17px;}
 .rfbtn.spin{animation:rot .7s linear;}
 @keyframes rot{to{transform:rotate(360deg)}}
+.totopbtn{width:38px;height:38px;border-radius:10px;border:1px solid var(--bd2);
+  background:var(--s2);color:var(--tx2);cursor:pointer;display:none;place-items:center;
+  flex:0 0 auto;}
+.totopbtn svg{width:17px;height:17px;}
+
+/* Collapsed header — once the page is scrolled, the eyebrow/title/version
+   badge tuck away so the sticky header stops eating vertical space, leaving
+   just the live status, refresh, and a "back to top" button. No CSS
+   transition on these — an instant toggle keeps the JS-measured header
+   height always accurate, with nothing mid-animation to measure wrong. */
+.hdr.collapsed .hdr-eyebrow,
+.hdr.collapsed .hdr-title,
+.hdr.collapsed .vbadge{display:none;}
+.hdr.collapsed .hdr-inner{padding-top:9px;padding-bottom:9px;}
+.hdr.collapsed .totopbtn{display:grid;}
 /* FIFA 4-colour stripe */
 .stripe{height:4px;background:linear-gradient(90deg,#7c3aed 0% 25%,#dc2626 25% 50%,#16a34a 50% 75%,#2563eb 75%);}
 
@@ -77,13 +100,14 @@ body{margin:0;background:var(--bg);color:var(--tx);font-family:"DM Sans",system-
   letter-spacing:.06em;font-size:15px;color:var(--tx);margin:0;}
 .board-hint{margin-left:auto;font-family:"DM Mono",monospace;font-size:13px;color:var(--tx3);}
 .srows{padding:7px 8px 10px;}
-.srow{display:grid;grid-template-columns:28px 1fr auto;align-items:center;gap:10px;
+.srow{display:grid;grid-template-columns:28px 1fr auto 16px;align-items:center;gap:10px;
   padding:14px 10px;border-radius:10px;cursor:pointer;position:relative;
   transition:background .13s;min-height:56px;}
 .srow:hover,.srow:active{background:var(--s3);}
 .srow+.srow{margin-top:2px;}
 .srow .rnk{font-family:"DM Mono",monospace;font-size:14px;color:var(--tx3);text-align:center;}
-.srow.top1 .rnk{color:var(--draw);}
+.rnk-star{display:inline-block;width:20px;height:20px;color:var(--tx);}
+.rnk-star svg{width:100%;height:100%;}
 .who{min-width:0;}
 .who .nm{font-family:"Archivo",sans-serif;font-weight:900;letter-spacing:.05em;
   text-transform:uppercase;font-size:17px;color:var(--tx);
@@ -97,15 +121,31 @@ body{margin:0;background:var(--bg);color:var(--tx);font-family:"DM Sans",system-
   line-height:1;font-variant-numeric:tabular-nums;}
 .pts-lbl{font-family:"DM Mono",monospace;font-size:12px;letter-spacing:.12em;
   color:var(--tx3);text-transform:uppercase;margin-top:3px;}
-.chevron{position:absolute;right:10px;top:50%;transform:translateY(-50%);
-  width:16px;height:16px;color:var(--tx3);}
+.chevron{width:16px;height:16px;color:var(--tx3);flex:0 0 auto;}
 .chevron svg{width:100%;height:100%;}
-.crown{position:absolute;left:-2px;top:-8px;font-size:13px;transform:rotate(-18deg);}
 
 .mult-row{display:flex;align-items:center;gap:10px;padding:14px 16px;
   border-top:1px solid var(--bd);background:var(--s2);}
 .mult-lab{font-size:15px;color:var(--tx2);flex:1;line-height:1.4;}
 .mult-lab b{color:var(--tx);}
+.scoreinfo-btn{display:flex;align-items:center;gap:9px;width:100%;
+  padding:13px 16px;background:none;border:none;border-top:1px solid var(--bd);
+  cursor:pointer;font-family:"DM Mono",monospace;font-size:13.5px;
+  color:var(--tx3);text-align:left;}
+.scoreinfo-btn:active{background:var(--s2);}
+.scoreinfo-ic{width:15px;height:15px;flex:0 0 auto;}
+.scoreinfo-ic svg{width:100%;height:100%;}
+.scoreinfo-chev{margin-left:auto;width:14px;height:14px;flex:0 0 auto;
+  transition:transform .2s ease;}
+.scoreinfo-chev svg{width:100%;height:100%;}
+.scoreinfo-chev.open{transform:rotate(90deg);}
+.scoreinfo-panel{padding:2px 16px 18px;border-top:1px solid var(--bd);background:var(--s2);}
+.scoreinfo-row{display:flex;justify-content:space-between;align-items:center;
+  padding:8px 0;font-family:"DM Mono",monospace;font-size:14px;color:var(--tx2);}
+.scoreinfo-row b{color:var(--tx);font-family:"Archivo",sans-serif;font-weight:800;
+  font-variant-numeric:tabular-nums;}
+.scoreinfo-divider{height:1px;background:var(--bd);margin:6px 0 8px;}
+.scoreinfo-note{font-size:13px;color:var(--tx3);line-height:1.55;margin:10px 0 2px;}
 .sw{position:relative;width:48px;height:28px;flex:0 0 auto;}
 .sw input{opacity:0;width:100%;height:100%;margin:0;cursor:pointer;}
 .sw-tr{position:absolute;inset:0;border-radius:20px;background:var(--s3);
@@ -150,6 +190,11 @@ body{margin:0;background:var(--bg);color:var(--tx);font-family:"DM Sans",system-
 .ochip{display:inline-flex;align-items:center;gap:6px;
   font-size:14px;color:var(--tx2);}
 .ochip b{color:var(--tx);}
+.tier-ic{display:inline-block;width:16px;height:16px;flex:0 0 auto;
+  vertical-align:-3px;}
+.tier-ic svg{width:100%;height:100%;}
+.ochip .tier-ic{width:18px;height:18px;vertical-align:-4.5px;}
+.scoreinfo-row .tier-ic{width:17px;height:17px;vertical-align:-3.5px;}
 
 /* ── PLAYER DRAW CARDS ── */
 .pcards{display:flex;flex-direction:column;gap:18px;}
@@ -157,22 +202,32 @@ body{margin:0;background:var(--bg);color:var(--tx);font-family:"DM Sans",system-
   overflow:hidden;position:relative;}
 .pcard::before{content:"";position:absolute;left:0;top:14px;bottom:14px;
   width:5px;border-radius:0 3px 3px 0;background:var(--pc);}
-.pcard-head{display:flex;align-items:center;gap:12px;padding:15px 18px 13px 22px;
-  border-bottom:1px solid var(--bd);}
-.pcard-head .pdot{width:20px;height:20px;}
+.pcard-head{display:flex;align-items:center;gap:13px;padding:14px 16px 14px 22px;
+  border-bottom:1px solid var(--bd);cursor:pointer;}
+.pcard:not(.open) .pcard-head{border-bottom-color:transparent;}
+.pcard-head:active{background:var(--s2);}
+.pcard-head .pdot{width:15px;height:15px;flex:0 0 auto;}
+.pcard-id{display:flex;flex-direction:column;gap:3px;min-width:0;}
 .pcard-pn{font-family:"Archivo",sans-serif;font-weight:900;text-transform:uppercase;
-  letter-spacing:.05em;font-size:21px;color:var(--tx);}
-.pcard-tc{margin-left:auto;font-family:"DM Mono",monospace;font-size:13px;
-  color:var(--tx3);background:var(--s3);padding:5px 10px;border-radius:16px;}
-.pcard-pts{margin-left:8px;font-family:"Archivo",sans-serif;font-weight:900;
-  font-size:19px;color:var(--draw);font-variant-numeric:tabular-nums;}
+  letter-spacing:.04em;font-size:16px;color:var(--tx);}
+.pcard-tc{font-family:"DM Mono",monospace;font-size:12.5px;color:var(--tx3);}
+.pcard-pts{margin-left:auto;text-align:right;flex:0 0 auto;}
+.pcard-pts-n{font-family:"Archivo",sans-serif;font-weight:900;font-size:18px;
+  color:var(--tx);font-variant-numeric:tabular-nums;line-height:1;}
+.pcard-pts-l{font-family:"DM Mono",monospace;font-size:10.5px;letter-spacing:.1em;
+  color:var(--tx3);text-transform:uppercase;margin-top:3px;}
+.pcard-chev{width:16px;height:16px;color:var(--tx3);flex:0 0 auto;
+  transition:transform .2s ease;}
+.pcard-chev svg{width:100%;height:100%;}
+.pcard.open .pcard-chev{transform:rotate(90deg);}
 .tmlist{padding:9px 10px 12px;}
 .tmrow{display:grid;grid-template-columns:auto 1fr auto auto;align-items:center;gap:10px;
   padding:12px 12px;border-radius:10px;background:var(--s2);cursor:pointer;
   transition:background .13s;}
 .tmrow+.tmrow{margin-top:6px;}
 .tmrow:active{background:var(--s3);}
-.tmrow.elim{opacity:.5;}
+.tmrow.elim{opacity:.5;filter:grayscale(.75);}
+.tmrow.elim .tpill{background:var(--s3);color:var(--tx3);border-color:var(--bd2);}
 .tmfl{display:inline-block;}
 .tmnm{font-weight:700;color:var(--tx);font-size:16px;}
 .tmnm small{display:block;font-family:"DM Mono",monospace;font-weight:400;
@@ -341,29 +396,33 @@ body{margin:0;background:var(--bg);color:var(--tx);font-family:"DM Sans",system-
 .mstatus.live .live-badge{font-size:12.5px;}
 .mstatus.done{background:var(--s3);color:var(--tx2);}
 .mstatus.pre{background:var(--s3);color:var(--tx2);}
-.mhead-teams{display:grid;grid-template-columns:1fr auto 1fr;align-items:start;gap:10px;}
-.mhead-side{display:flex;flex-direction:column;align-items:center;gap:9px;}
+.mhead-teams{display:grid;grid-template-columns:1fr auto 1fr;align-items:start;gap:8px;}
+.mhead-side{display:flex;flex-direction:column;align-items:center;gap:9px;min-width:0;}
 .mhead-nm{font-family:"Archivo",sans-serif;font-weight:900;font-size:15px;
   letter-spacing:.03em;text-transform:uppercase;color:var(--tx);text-align:center;}
-.mhead-score{font-family:"Archivo",sans-serif;font-weight:900;font-size:34px;
-  color:var(--tx);font-variant-numeric:tabular-nums;padding-top:18px;}
+.mhead-owner{display:flex;align-items:center;gap:6px;
+  font-family:"DM Mono",monospace;font-size:12.5px;color:var(--tx3);}
+.mhead-score{height:47px;display:flex;align-items:center;justify-content:center;
+  font-family:"Archivo",sans-serif;font-weight:900;
+  font-size:clamp(22px,7vw,34px);color:var(--tx);font-variant-numeric:tabular-nums;
+  white-space:nowrap;flex:0 0 auto;}
 .mhead-venue{margin:18px 0 0;font-size:13px;color:var(--tx3);}
 
 .statsec{background:var(--s1);border:1px solid var(--bd);border-radius:var(--r);
-  padding:22px 18px 6px;}
-.statrow{margin-bottom:24px;opacity:0;transform:translateY(12px);
+  padding:22px 18px 8px;}
+.statrow{margin-bottom:20px;opacity:0;transform:translateY(12px);
   animation:statIn .55s cubic-bezier(.22,1,.36,1) forwards;
   animation-delay:calc(var(--i) * 90ms);}
 @keyframes statIn{to{opacity:1;transform:translateY(0)}}
 .statrow-label{text-align:center;font-family:"DM Mono",monospace;font-size:13px;
-  color:var(--tx3);text-transform:uppercase;letter-spacing:.07em;margin-bottom:11px;}
-.statrow-vals{display:grid;grid-template-columns:36px 1fr 36px;align-items:center;gap:13px;}
-.statval{font-family:"Archivo",sans-serif;font-weight:900;font-size:17px;
-  color:var(--tx);text-align:center;font-variant-numeric:tabular-nums;}
-.statbar{height:7px;border-radius:5px;background:var(--s3);display:flex;overflow:hidden;}
-.statbar-home,.statbar-away{height:100%;width:0;transition:width 1s cubic-bezier(.22,1,.36,1);}
-.statbar-home{border-radius:5px 0 0 5px;}
-.statbar-away{border-radius:0 5px 5px 0;}
+  color:var(--tx3);text-transform:uppercase;letter-spacing:.07em;margin-bottom:10px;}
+.statline{display:grid;grid-template-columns:28px 1fr 30px;align-items:center;gap:10px;}
+.statline+.statline{margin-top:7px;}
+.statval{font-family:"Archivo",sans-serif;font-weight:900;font-size:15px;
+  color:var(--tx);text-align:right;font-variant-numeric:tabular-nums;}
+.statbar-track{height:7px;border-radius:5px;background:var(--s3);overflow:hidden;}
+.statbar-fill{height:100%;width:0;border-radius:5px;
+  transition:width 1s cubic-bezier(.22,1,.36,1);}
 @media(prefers-reduced-motion:reduce){.statrow{animation:none;opacity:1;transform:none;}}
 
 /* ── STAGE TABS ── */
@@ -402,16 +461,17 @@ code{background:var(--s2);padding:2px 6px;border-radius:4px;
 
 <div class="hdr" id="hdr">
   <div class="hdr-inner">
-    <div class="hdr-title">
-      <small>FIFA World Cup 2026</small>
-      Martin Family<br>World Cup Sweep
+    <p class="hdr-eyebrow">FIFA World Cup 2026</p>
+    <h1 class="hdr-title">Martin Family<br>World Cup Sweep</h1>
+    <div class="hdr-meta">
+      <div class="hdr-status" id="hstatus">
+        <span class="vbadge" id="vbadge">v2.5</span>
+        <span class="pulse"></span>
+        <span id="utxt">loading…</span>
+      </div>
+      <button class="rfbtn" id="rfbtn" aria-label="Refresh"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 12a8.5 8.5 0 0 1 14.4-6.1M20.5 12a8.5 8.5 0 0 1-14.4 6.1"/><path d="M17.4 2.8v4.4h-4.4M6.6 21.2v-4.4H11"/></svg></button>
+      <button class="totopbtn" id="totopbtn" aria-label="Back to top" title="Back to top"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V6M6 11l6-6 6 6"/></svg></button>
     </div>
-    <div class="hdr-status" id="hstatus">
-      <span class="vbadge" id="vbadge">v7</span>
-      <span class="pulse"></span>
-      <span id="utxt">loading…</span>
-    </div>
-    <button class="rfbtn" id="rfbtn" aria-label="Refresh"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 12a8.5 8.5 0 0 1 14.4-6.1M20.5 12a8.5 8.5 0 0 1-14.4 6.1"/><path d="M17.4 2.8v4.4h-4.4M6.6 21.2v-4.4H11"/></svg></button>
   </div>
 </div>
 <div class="stripe"></div>
@@ -421,7 +481,7 @@ code{background:var(--s2);padding:2px 6px;border-radius:4px;
 <script>
 /* ── CONFIG ── */
 const CONFIG={
-  VERSION:"v7",   // bump this on every deploy — shown in the header so you can
+  VERSION:"v2.5",   // bump this on every deploy — shown in the header so you can
                   // confirm at a glance whether a new push has actually gone live
   ESPN_BASE:"https://site.api.espn.com/apis/site/v2/sports/soccer/fifa.world/scoreboard",
   START:"20260611",END:"20260719",CHUNK_DAYS:12,
@@ -429,13 +489,22 @@ const CONFIG={
 };
 
 /* ── DATA ── */
-const PLAYERS=["LUCA","ANTON","JEZZA","STEPH","CAM","ANIKA"];
-const PC={LUCA:"#e23b3b",ANTON:"#4a86c7",JEZZA:"#e8a766",STEPH:"#4fb0a5",CAM:"#8b5cc7",ANIKA:"#e8902e"};
+const PLAYERS=["LUCA","ANTON","JENEMENERY","STEPH","CAM","ANIKA"];
+const PC={LUCA:"#e23b3b",ANTON:"#4a86c7",JENEMENERY:"#e8a766",STEPH:"#4fb0a5",CAM:"#8b5cc7",ANIKA:"#e8902e"};
 const TIER={
-  contender:{label:"Contender",cls:"contender",icon:"⭐",mult:1},
-  darkhorse:{label:"Dark Horse",cls:"darkhorse",icon:"🔥",mult:1.5},
-  wildcard:{label:"Wildcard",cls:"wildcard",icon:"🎲",mult:2}
+  contender:{label:"Contender",cls:"contender",
+    icon:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>',
+    mult:1},
+  darkhorse:{label:"Dark Horse",cls:"darkhorse",
+    icon:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M8.5 14.5A2.5 2.5 0 0 0 11 17a2.5 2.5 0 0 0 2.5-2.5c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7.5 7.5 0 1 1-15 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2 1Z"/></svg>',
+    mult:1.5},
+  wildcard:{label:"Wildcard",cls:"wildcard",
+    icon:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect width="16" height="16" x="4" y="4" rx="2.5"/><g stroke-width="2.8"><path d="M8 8h.01M8 16h.01M16 8h.01M16 16h.01M12 12h.01"/></g></svg>',
+    mult:2}
 };
+// Tier icons render at consistent size wherever they appear — pills, fixture
+// chips, scorer rows — regardless of the surrounding text's font-size.
+function tierIcon(tierKey){ return `<span class="tier-ic">${TIER[tierKey].icon}</span>`; }
 
 /* ── ICONS (FIFA-app style: thin outline, currentColor) ── */
 const ICONS={
@@ -446,7 +515,9 @@ const ICONS={
   live:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="2.6" fill="currentColor" stroke="none"/><path d="M7.8 7.8a6.2 6.2 0 0 0 0 8.7M16.2 7.8a6.2 6.2 0 0 1 0 8.7M4.6 4.6a11 11 0 0 0 0 14.8M19.4 4.6a11 11 0 0 1 0 14.8"/></svg>',
   back:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>',
   refresh:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 12a8.5 8.5 0 0 1 14.4-6.1M20.5 12a8.5 8.5 0 0 1-14.4 6.1"/><path d="M17.4 2.8v4.4h-4.4M6.6 21.2v-4.4H11"/></svg>',
-  chevron:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg>'
+  chevron:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg>',
+  toTop:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V6M6 11l6-6 6 6"/></svg>',
+  info:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 11v5.5"/><circle cx="12" cy="7.8" r=".25" fill="currentColor" stroke="none"/></svg>'
 };
 
 /* ── FLAG CHIPS ──
@@ -481,14 +552,14 @@ const TEAMS=[
   {n:"Argentina",fl:"🇦🇷",cc:"ar",o:"ANTON",t:"contender"},
   {n:"France",fl:"🇫🇷",cc:"fr",o:"ANTON",t:"contender"},
   {n:"Canada",fl:"🇨🇦",cc:"ca",o:"ANTON",t:"wildcard"},
-  {n:"Uzbekistan",fl:"🇺🇿",cc:"uz",o:"JEZZA",t:"wildcard"},
-  {n:"Ivory Coast",fl:"🇨🇮",cc:"ci",o:"JEZZA",t:"darkhorse",a:["cote divoire","cote d ivoire","côte d'ivoire"]},
-  {n:"Switzerland",fl:"🇨🇭",cc:"ch",o:"JEZZA",t:"darkhorse"},
-  {n:"Morocco",fl:"🇲🇦",cc:"ma",o:"JEZZA",t:"contender"},
-  {n:"Jordan",fl:"🇯🇴",cc:"jo",o:"JEZZA",t:"wildcard"},
-  {n:"Japan",fl:"🇯🇵",cc:"jp",o:"JEZZA",t:"contender"},
-  {n:"Cape Verde",fl:"🇨🇻",cc:"cv",o:"JEZZA",t:"wildcard",a:["cabo verde"]},
-  {n:"Senegal",fl:"🇸🇳",cc:"sn",o:"JEZZA",t:"contender"},
+  {n:"Uzbekistan",fl:"🇺🇿",cc:"uz",o:"JENEMENERY",t:"wildcard"},
+  {n:"Ivory Coast",fl:"🇨🇮",cc:"ci",o:"JENEMENERY",t:"darkhorse",a:["cote divoire","cote d ivoire","côte d'ivoire"]},
+  {n:"Switzerland",fl:"🇨🇭",cc:"ch",o:"JENEMENERY",t:"darkhorse"},
+  {n:"Morocco",fl:"🇲🇦",cc:"ma",o:"JENEMENERY",t:"contender"},
+  {n:"Jordan",fl:"🇯🇴",cc:"jo",o:"JENEMENERY",t:"wildcard"},
+  {n:"Japan",fl:"🇯🇵",cc:"jp",o:"JENEMENERY",t:"contender"},
+  {n:"Cape Verde",fl:"🇨🇻",cc:"cv",o:"JENEMENERY",t:"wildcard",a:["cabo verde"]},
+  {n:"Senegal",fl:"🇸🇳",cc:"sn",o:"JENEMENERY",t:"contender"},
   {n:"Croatia",fl:"🇭🇷",cc:"hr",o:"STEPH",t:"contender"},
   {n:"South Africa",fl:"🇿🇦",cc:"za",o:"STEPH",t:"wildcard"},
   {n:"Iraq",fl:"🇮🇶",cc:"iq",o:"STEPH",t:"wildcard"},
@@ -561,6 +632,8 @@ let selP=null;
 let selTeam=null;  // selected team name for team detail view
 let selMatch=null; // selected event id for match detail view
 let selStage=null;
+let expandedDraw=new Set(); // which player names' Draw cards are expanded — all collapsed by default
+let showScoringInfo=false; // "How scoring works" panel under the leaderboard
 
 /* ── FETCH ── */
 async function getJSON(url){
@@ -757,7 +830,7 @@ function renderLive(){
     const hasSweep=owners.length>0;
     const chips=owners.length
       ?`<div class="lcard-foot">${owners.map(t=>
-          `<span class="ochip"><span class="fxown" style="background:${PC[t.o]}"></span><b>${t.o}</b> · ${t.n} ${TIER[t.t].icon}</span>`
+          `<span class="ochip"><span class="fxown" style="background:${PC[t.o]}"></span><b>${t.o}</b> · ${t.n} ${tierIcon(t.t)}</span>`
         ).join("")}</div>`:"";
     return`<div class="lcard${hasSweep?" sweep":""}" data-match="${ev.id}">
       <div class="lcard-top">
@@ -780,7 +853,7 @@ function renderLive(){
       ${chips}
     </div>`;
   }).join("");
-  return`<div class="livesec" id="anchor-live" style="scroll-margin-top:70px">
+  return`<div class="livesec" id="anchor-live" class="anchor-mark">
     <div class="livesec-hd">
       <span class="live-badge"><span class="dot"></span>Live Now</span>
       <span class="live-ct">${live.length} match${live.length>1?"es":""} in progress</span>
@@ -793,7 +866,7 @@ function renderLive(){
 function renderScorers(){
   const top=topScorers(5);
   if(!top.length){
-    return`<div id="anchor-scorers" style="scroll-margin-top:70px"></div>
+    return`<div id="anchor-scorers" class="anchor-mark"></div>
     <p class="slabel" style="margin-top:26px">Golden Boot Race</p>
     <div class="note">No goals on the board yet — check back once the tournament kicks into gear.</div>`;
   }
@@ -810,7 +883,7 @@ function renderScorers(){
       <div class="gcount"><div class="n">${p.goals}</div><div class="l">${p.goals===1?"Goal":"Goals"}</div></div>
     </div>`;
   }).join("");
-  return`<div id="anchor-scorers" style="scroll-margin-top:70px"></div>
+  return`<div id="anchor-scorers" class="anchor-mark"></div>
     <p class="slabel" style="margin-top:26px">Golden Boot Race</p>
     <div class="board">
       <div class="board-head">
@@ -843,8 +916,8 @@ function statRows(ev){
       hv=ev.homeStats[def.key]; av=ev.awayStats[def.key];
     }
     if(!isFinite(hv)||!isFinite(av)||(hv===0&&av===0)) return ""; // no real data for this stat yet
-    const total=hv+av;
-    const hPct=total>0?(hv/total*100):50, aPct=100-hPct;
+    const max=Math.max(hv,av);
+    const hPct=max>0?(hv/max*100):0, aPct=max>0?(av/max*100):0;
     const homeLeads=hv>=av;
     const hColor=homeLeads?"var(--draw)":"var(--tx3)";
     const aColor=!homeLeads?"var(--draw)":"var(--tx3)";
@@ -852,12 +925,14 @@ function statRows(ev){
     const aDisp=def.pct?Math.round(av)+"%":Math.round(av);
     return`<div class="statrow" style="--i:${i}">
       <div class="statrow-label">${def.label}</div>
-      <div class="statrow-vals">
+      <div class="statline">
+        ${flagChip(ev.homeTeam,"sm")}
+        <div class="statbar-track"><div class="statbar-fill" data-w="${hPct.toFixed(1)}" style="background:${hColor}"></div></div>
         <span class="statval">${hDisp}</span>
-        <div class="statbar">
-          <div class="statbar-home" data-w="${hPct.toFixed(1)}" style="background:${hColor}"></div>
-          <div class="statbar-away" data-w="${aPct.toFixed(1)}" style="background:${aColor}"></div>
-        </div>
+      </div>
+      <div class="statline">
+        ${flagChip(ev.awayTeam,"sm")}
+        <div class="statbar-track"><div class="statbar-fill" data-w="${aPct.toFixed(1)}" style="background:${aColor}"></div></div>
         <span class="statval">${aDisp}</span>
       </div>
     </div>`;
@@ -878,8 +953,13 @@ function renderMatch(eventId){
   const statsBlock=rows
     ?`<div class="statsec">${rows}</div>`
     :`<div class="note">Match stats will appear here once the game gets underway.</div>`;
-  const homeOwn=ev.homeTeam?`<span class="ochip"><span class="fxown" style="background:${PC[ev.homeTeam.o]}"></span><b>${ev.homeTeam.o}</b> · ${TIER[ev.homeTeam.t].icon} ${TIER[ev.homeTeam.t].label}</span>`:"";
-  const awayOwn=ev.awayTeam?`<span class="ochip"><span class="fxown" style="background:${PC[ev.awayTeam.o]}"></span><b>${ev.awayTeam.o}</b> · ${TIER[ev.awayTeam.t].icon} ${TIER[ev.awayTeam.t].label}</span>`:"";
+  function mheadSide(team,rawName){
+    const nm=`<span class="mhead-nm">${team?team.n:rawName}</span>`;
+    if(!team) return nm;
+    return`${nm}
+      <span class="tpill ${TIER[team.t].cls}">${tierIcon(team.t)} ${TIER[team.t].label}</span>
+      <span class="mhead-owner"><span class="pdot" style="background:${PC[team.o]}"></span>${team.o}</span>`;
+  }
 
   return`
     <div class="back-row" id="back">
@@ -891,14 +971,12 @@ function renderMatch(eventId){
       <div class="mhead-teams">
         <div class="mhead-side">
           ${flagChip(ev.homeTeam,"lg")}
-          <span class="mhead-nm">${ev.homeTeam?ev.homeTeam.n:ev.home}</span>
-          ${homeOwn}
+          ${mheadSide(ev.homeTeam,ev.home)}
         </div>
         <div class="mhead-score">${showScore?`${ev.hs??"–"} : ${ev.as??"–"}`:"v"}</div>
         <div class="mhead-side">
           ${flagChip(ev.awayTeam,"lg")}
-          <span class="mhead-nm">${ev.awayTeam?ev.awayTeam.n:ev.away}</span>
-          ${awayOwn}
+          ${mheadSide(ev.awayTeam,ev.away)}
         </div>
       </div>
       ${ev.venue?`<p class="mhead-venue">📍 ${ev.venue}</p>`:""}
@@ -915,11 +993,10 @@ function renderHome(P){
     ?`<button class="bnav-btn" data-anchor="anchor-live"><span class="bicon">${ICONS.live}</span>Live</button>`:"";
   return`
     ${renderLive()}
-    <div id="anchor-board" style="scroll-margin-top:70px"></div>
+    <div id="anchor-board" class="anchor-mark"></div>
     <p class="slabel" style="margin-top:${hasLive?26:20}px">Leaderboard</p>
     ${renderBoard(P)}
-    ${renderScorers()}
-    <div id="anchor-fixtures" style="scroll-margin-top:70px"></div>
+    <div id="anchor-fixtures" class="anchor-mark"></div>
     <div style="display:flex;align-items:center;gap:10px;margin-top:26px;margin-bottom:11px">
       <p class="slabel" style="margin:0" id="fxlabel">${fxTab==="up"?"Up Next":"Latest Results"}</p>
       <div class="seg">
@@ -928,23 +1005,24 @@ function renderHome(P){
       </div>
     </div>
     <div class="fxlist" id="fxlist">${renderFx()}</div>
-    <div id="anchor-draw" style="scroll-margin-top:70px"></div>
+    <div id="anchor-draw" class="anchor-mark"></div>
     <p class="slabel" style="margin-top:26px">The Draw</p>
     <div class="pcards">${renderDraw(P)}</div>
+    ${renderScorers()}
     <div style="height:16px"></div>
     <div class="bnav" id="bnav">
       ${liveTab}
       <button class="bnav-btn" data-anchor="anchor-board">
-        <span class="bicon">${ICONS.trophy}</span>Standings
-      </button>
-      <button class="bnav-btn" data-anchor="anchor-scorers">
-        <span class="bicon">${ICONS.ball}</span>Scorers
+        <span class="bicon">${ICONS.trophy}</span>Leaderboard
       </button>
       <button class="bnav-btn" data-anchor="anchor-fixtures">
         <span class="bicon">${ICONS.calendar}</span>Fixtures
       </button>
       <button class="bnav-btn" data-anchor="anchor-draw">
         <span class="bicon">${ICONS.users}</span>Draw
+      </button>
+      <button class="bnav-btn" data-anchor="anchor-scorers">
+        <span class="bicon">${ICONS.ball}</span>Scorers
       </button>
     </div>`;
 }
@@ -957,8 +1035,7 @@ function renderBoard(P){
   const rows=ranked.map((r,i)=>{
     const lead=i===0&&r.pts>0;
     return`<div class="srow${lead?" top1":""}" data-p="${r.p}">
-      ${lead?'<span class="crown">👑</span>':''}
-      <div class="rnk">${lead?"★":(i+1)}</div>
+      <div class="rnk">${lead?`<span class="rnk-star">${TIER.contender.icon}</span>`:(i+1)}</div>
       <div class="who">
         <div class="nm"><span class="pdot" style="background:${PC[r.p]}"></span>${r.p}</div>
         <div class="meta">${r.w}W · ${r.d}D · ${r.l}L · ${r.played} played · GD ${fgd(r.gf-r.ga)}</div>
@@ -982,6 +1059,22 @@ function renderBoard(P){
       <label class="sw"><input type="checkbox" id="mult"${useMult?" checked":""}>
         <span class="sw-tr"></span><span class="sw-th"></span></label>
     </div>
+    <button class="scoreinfo-btn" id="scoreinfo-btn">
+      <span class="scoreinfo-ic">${ICONS.info}</span>
+      How scoring works
+      <span class="scoreinfo-chev${showScoringInfo?" open":""}">${ICONS.chevron}</span>
+    </button>
+    ${showScoringInfo?`<div class="scoreinfo-panel">
+      <div class="scoreinfo-row"><span>Win</span><b>3 pts</b></div>
+      <div class="scoreinfo-row"><span>Draw</span><b>1 pt</b></div>
+      <div class="scoreinfo-row"><span>Loss</span><b>0 pts</b></div>
+      <div class="scoreinfo-divider"></div>
+      <p class="scoreinfo-note">With Underdog scoring on, every match's points are multiplied by the tier of the team that earned them:</p>
+      <div class="scoreinfo-row"><span>${tierIcon("contender")} ${TIER.contender.label}</span><b>×${TIER.contender.mult}</b></div>
+      <div class="scoreinfo-row"><span>${tierIcon("darkhorse")} ${TIER.darkhorse.label}</span><b>×${TIER.darkhorse.mult}</b></div>
+      <div class="scoreinfo-row"><span>${tierIcon("wildcard")} ${TIER.wildcard.label}</span><b>×${TIER.wildcard.mult}</b></div>
+      <p class="scoreinfo-note">Tiers reflect each team's pre-tournament chances — a win from a Wildcard pick is worth more than the same win from a Contender. Ties in the standings are broken by combined goal difference, then total goals scored.</p>
+    </div>`:""}
   </div>`;
 }
 
@@ -1007,7 +1100,7 @@ function renderFx(){
       :`<div class="fxvs">v</div>`;
     const foot=hasSweep?`<div class="fxfoot">${
       [ev.homeTeam,ev.awayTeam].filter(Boolean).map(t=>
-        `<span class="ochip"><span class="fxown" style="background:${PC[t.o]}"></span><b>${t.o}</b> · ${t.n} ${TIER[t.t].icon}</span>`
+        `<span class="ochip"><span class="fxown" style="background:${PC[t.o]}"></span><b>${t.o}</b> · ${t.n} ${tierIcon(t.t)}</span>`
       ).join("")
     }</div>`:"";
     return`<div class="fxcard${hasSweep?" sweep":""}" data-match="${ev.id}">
@@ -1036,29 +1129,42 @@ function renderFx(){
 function renderDraw(P){
   const order=PLAYERS.map(p=>({p,pts:P[p].pts})).sort((a,b)=>b.pts-a.pts).map(x=>x.p);
   return order.map(p=>{
-    const teams=TEAMS.filter(t=>t.o===p);
-    const rows=teams.map(t=>{
+    const open=expandedDraw.has(p);
+    const teamsRaw=TEAMS.filter(t=>t.o===p).map(t=>{
       const played=EVENTS.filter(ev=>ev.finished&&
         ((ev.homeTeam&&ev.homeTeam.n===t.n)||(ev.awayTeam&&ev.awayTeam.n===t.n))).length;
       const hasMore=EVENTS.some(ev=>!ev.finished&&
         ((ev.homeTeam&&ev.homeTeam.n===t.n)||(ev.awayTeam&&ev.awayTeam.n===t.n)));
       const elim=played>0&&!hasMore;
+      return{t,played,elim};
+    });
+    // Teams still alive sort first and stay the visual focus; eliminated
+    // teams sink to the bottom as a block (stable sort keeps each group's
+    // own relative order) — still scrollable to see the full original picks.
+    const teams=teamsRaw.slice().sort((a,b)=>(a.elim===b.elim)?0:(a.elim?1:-1));
+    const rows=teams.map(({t,played,elim})=>{
       const sub=played>0?`${played} played${elim?" · eliminated":""}`:"yet to play";
       return`<div class="tmrow${elim?" elim":""}" data-team="${t.n}">
         <span class="tmfl">${flagChip(t,"sm")}</span>
         <span class="tmnm">${t.n}<small>${sub}</small></span>
-        <span class="tpill ${TIER[t.t].cls}">${TIER[t.t].icon} ${TIER[t.t].label}</span>
+        <span class="tpill ${TIER[t.t].cls}">${tierIcon(t.t)} ${TIER[t.t].label}</span>
         <span class="tm-chev">${ICONS.chevron}</span>
       </div>`;
     }).join("");
-    return`<div class="pcard" style="--pc:${PC[p]}">
-      <div class="pcard-head">
-        <span class="pdot" style="background:${PC[p]};width:20px;height:20px"></span>
-        <span class="pcard-pn">${p}</span>
-        <span class="pcard-tc">8 teams</span>
-        <span class="pcard-pts">${fp(P[p].pts)} pts</span>
+    return`<div class="pcard${open?" open":""}" style="--pc:${PC[p]}">
+      <div class="pcard-head" data-player="${p}">
+        <span class="pdot" style="background:${PC[p]}"></span>
+        <div class="pcard-id">
+          <span class="pcard-pn">${p}</span>
+          <span class="pcard-tc">8 teams</span>
+        </div>
+        <div class="pcard-pts">
+          <div class="pcard-pts-n">${fp(P[p].pts)}</div>
+          <div class="pcard-pts-l">PTS</div>
+        </div>
+        <span class="pcard-chev">${ICONS.chevron}</span>
       </div>
-      <div class="tmlist">${rows}</div>
+      ${open?`<div class="tmlist">${rows}</div>`:""}
     </div>`;
   }).join("");
 }
@@ -1121,7 +1227,7 @@ function renderTeam(P){
         <div style="min-width:0">
           <div class="det-pname">${team.n}</div>
           <div style="display:flex;align-items:center;gap:10px;margin-top:7px;flex-wrap:wrap">
-            <span class="tpill ${TIER[team.t].cls}">${TIER[team.t].icon} ${TIER[team.t].label}</span>
+            <span class="tpill ${TIER[team.t].cls}">${tierIcon(team.t)} ${TIER[team.t].label}</span>
             <span style="font-family:'DM Mono',monospace;font-size:13px;color:var(--tx3);
               display:inline-flex;align-items:center;gap:6px">
               <span class="pdot" style="background:${PC[team.o]}"></span>${team.o}'s team
@@ -1170,7 +1276,7 @@ function renderPlayer(name,P){
       <div class="tsec-head">
         <span class="tsec-fl">${flagChip(team,"sm")}</span>
         <span class="tsec-nm">${team.n}</span>
-        <span class="tpill ${TIER[team.t].cls}">${TIER[team.t].icon} ${TIER[team.t].label}</span>
+        <span class="tpill ${TIER[team.t].cls}">${tierIcon(team.t)} ${TIER[team.t].label}</span>
       </div>
       ${tevs.map(ev=>matchCard(team,ev)).join("")}
     </div>`;
@@ -1267,6 +1373,93 @@ function matchCard(team,ev){
   </div>`;
 }
 
+/* ── BOTTOM NAV ACTIVE-TAB TRACKING ──
+   DISABLED FOR NOW — after several attempts, the highlight still jumped to
+   the wrong tab in real-world use despite passing every isolated test
+   thrown at it. Rather than keep guessing at mobile-Safari scroll-timing
+   edge cases, this is switched off outright: nav buttons still scroll to
+   their section perfectly, they just no longer show a "selected" state.
+   The logic below is left intact (not deleted) in case it's worth
+   revisiting later. */
+function updateActiveNavTab(){
+  return;
+  // eslint-disable-next-line no-unreachable
+  const bbtns=document.querySelectorAll(".bnav-btn[data-anchor]");
+  if(!bbtns.length) return;
+  const anchors=["anchor-live","anchor-board","anchor-fixtures","anchor-draw","anchor-scorers"]
+    .map(id=>document.getElementById(id)).filter(Boolean);
+  if(!anchors.length) return;
+  const hdr=document.getElementById("hdr");
+  const probe=hdr?hdr.getBoundingClientRect().height+10:80;
+  let current=anchors[0];
+  for(const el of anchors){
+    if(el.getBoundingClientRect().top-probe<=0) current=el; else break;
+  }
+  bbtns.forEach(b=>b.classList.toggle("on",b.dataset.anchor===current.id));
+}
+
+/* ── COLLAPSING HEADER ──
+   Once scrolled, tuck the eyebrow/title/version badge away so the sticky
+   header stops eating vertical space — leaving just the live status,
+   refresh, and a back-to-top button. The header's height changes the
+   moment this toggles, so --hdr-h is re-measured immediately afterward;
+   otherwise the section-jump offsets and nav-tab probe (both keyed off
+   --hdr-h) would silently fall out of sync with whichever header height
+   is actually showing, reintroducing the exact bug already fixed twice. */
+let _hdrCollapsed=false;
+function updateHeaderCollapse(){
+  const hdr=document.getElementById("hdr");
+  if(!hdr) return;
+  const should=window.scrollY>50;
+  if(should===_hdrCollapsed) return;
+  _hdrCollapsed=should;
+  hdr.classList.toggle("collapsed",_hdrCollapsed);
+  syncHeaderHeight();
+}
+
+/* A tap on a nav button sets its highlight immediately, then kicks off an
+   animated scrollIntoView — which passes THROUGH the other anchors on its
+   way to the target, briefly satisfying their "reached" threshold each
+   frame. Left unchecked, the scroll-spy fights the tap and the highlight
+   flickers through intermediate tabs before landing on the right one.
+   Worse: scrollIntoView locks in its target scroll position based on the
+   header's height AT THE MOMENT OF THE TAP — if the header then collapses
+   mid-flight, the content shifts under the animation that's still heading
+   for the old, now-stale target, and the page can land in the wrong
+   section entirely. _suppressSpy freezes BOTH the highlight and the
+   header's collapse state for the scroll's duration.
+   Settling is detected by directly polling window.scrollY every frame via
+   requestAnimationFrame — NOT by waiting for 'scroll' events to go quiet.
+   iOS Safari is known to fire scroll events sparsely during programmatic
+   smooth-scroll animations, so a timer that resets on each event can fire
+   prematurely mid-animation if there's a gap; reading the live scrollY
+   value directly has no such gap, since it's a property read, not an
+   event. */
+let _suppressSpy=false;
+function waitForScrollSettle(onSettled){
+  let lastY=window.scrollY, stableFrames=0, totalFrames=0;
+  (function check(){
+    const y=window.scrollY;
+    stableFrames = Math.abs(y-lastY)<1 ? stableFrames+1 : 0;
+    lastY=y; totalFrames++;
+    // ~6 consecutive still frames (~100ms @60fps) = genuinely stopped;
+    // a 90-frame (~1.5s) hard cap guards against ever getting stuck
+    if(stableFrames>=6||totalFrames>90) onSettled();
+    else requestAnimationFrame(check);
+  })();
+}
+
+let _navTicking=false;
+window.addEventListener("scroll",()=>{
+  if(_suppressSpy||_navTicking) return;
+  _navTicking=true;
+  requestAnimationFrame(()=>{
+    updateHeaderCollapse();   // run first — may change the header height
+    updateActiveNavTab();     // then re-derive the active tab against it
+    _navTicking=false;
+  });
+},{passive:true});
+
 /* ── BIND EVENTS ── */
 function bind(P){
   // leaderboard rows → player detail
@@ -1284,8 +1477,20 @@ function bind(P){
     }
   });
   document.getElementById("mult")?.addEventListener("change",e=>{useMult=e.target.checked;render();});
+  document.getElementById("scoreinfo-btn")?.addEventListener("click",()=>{
+    showScoringInfo=!showScoringInfo; render();
+  });
   document.getElementById("tab-up")?.addEventListener("click",()=>{fxTab="up";render();});
   document.getElementById("tab-res")?.addEventListener("click",()=>{fxTab="res";render();});
+
+  // Draw player cards → expand/collapse their team list
+  document.querySelectorAll(".pcard-head[data-player]").forEach(el=>{
+    el.addEventListener("click",()=>{
+      const p=el.dataset.player;
+      expandedDraw.has(p)?expandedDraw.delete(p):expandedDraw.add(p);
+      render();
+    });
+  });
 
   // Draw team rows → team detail view
   document.querySelectorAll(".tmrow[data-team]").forEach(el=>{
@@ -1297,27 +1502,34 @@ function bind(P){
     el.addEventListener("click",()=>navMatch(el.dataset.match));
   });
 
-  // Bottom nav — scroll to section + highlight active
+  // Bottom nav — scroll to section on tap
+  // (active-tab highlighting is disabled for now — see updateActiveNavTab)
   const bbtns=document.querySelectorAll(".bnav-btn[data-anchor]");
   bbtns.forEach(btn=>{
     btn.addEventListener("click",()=>{
+      _suppressSpy=true;
+      // Tapping any section is inherently "leaving the top" of the page —
+      // collapse the header right away (if it isn't already) so the scroll
+      // target below is computed against its final, stable height instead
+      // of the taller expanded one shifting out from under the animation.
+      if(!_hdrCollapsed){
+        _hdrCollapsed=true;
+        document.getElementById("hdr")?.classList.add("collapsed");
+        syncHeaderHeight();
+      }
       document.getElementById(btn.dataset.anchor)
         ?.scrollIntoView({behavior:"smooth",block:"start"});
+      waitForScrollSettle(()=>{
+        _suppressSpy=false;
+        updateHeaderCollapse();
+      });
     });
   });
-  if(bbtns.length){
-    const anchors=["anchor-live","anchor-board","anchor-scorers","anchor-fixtures","anchor-draw"].filter(
-      id=>document.getElementById(id)
-    );
-    const setActive=id=>{
-      bbtns.forEach(b=>b.classList.toggle("on",b.dataset.anchor===id));
-    };
-    setActive(anchors[0]); // highlight first visible section by default
-    const io=new IntersectionObserver(entries=>{
-      entries.forEach(e=>{if(e.isIntersecting) setActive(e.target.id);});
-    },{rootMargin:"-15% 0px -70% 0px"});
-    anchors.forEach(id=>{const el=document.getElementById(id);if(el)io.observe(el);});
-  }
+  // Sync the highlighted tab to wherever the page is actually scrolled right now —
+  // important after every re-render (e.g. auto-refresh), not just after a scroll.
+  // Skipped while a tap-triggered scroll is still settling, so a refresh that
+  // happens to land mid-animation can't flicker the highlight either.
+  if(bbtns.length&&!_suppressSpy) updateActiveNavTab();
 
   // Stage tab clicks
   document.querySelectorAll(".stab[data-stage]").forEach(btn=>{
@@ -1353,7 +1565,7 @@ function bind(P){
   // animate bars (leaderboard points bars + match stat bars)
   requestAnimationFrame(()=>{
     document.querySelectorAll(".bar[data-w]").forEach(b=>{b.style.width=b.dataset.w+"%";});
-    document.querySelectorAll(".statbar-home[data-w],.statbar-away[data-w]").forEach(b=>{
+    document.querySelectorAll(".statbar-fill[data-w]").forEach(b=>{
       b.style.width=b.dataset.w+"%";
     });
   });
@@ -1402,13 +1614,33 @@ async function refresh(manual){
   if(btn)setTimeout(()=>btn.classList.remove("spin"),700);
 }
 
+/* Keep --hdr-h matched to the real, rendered header height — measured live
+   rather than guessed, so it self-corrects if the header's content ever
+   changes (longer status text, a wrapped title, a different device, etc). */
+function syncHeaderHeight(){
+  const hdr=document.getElementById("hdr");
+  if(!hdr) return;
+  const h=Math.ceil(hdr.getBoundingClientRect().height)+14; // +buffer so sections don't touch the header edge
+  document.documentElement.style.setProperty("--hdr-h", h+"px");
+}
+
 function init(){
   const vb=document.getElementById("vbadge");
   if(vb) vb.textContent=CONFIG.VERSION;
   document.getElementById("rfbtn").addEventListener("click",()=>refresh(true));
+  document.getElementById("totopbtn").addEventListener("click",()=>{
+    window.scrollTo({top:0,behavior:"smooth"});
+  });
   refresh(false);
   // timer is set adaptively by setRefreshTimer() after each load
   document.addEventListener("visibilitychange",()=>{if(!document.hidden)refresh(false);});
+
+  syncHeaderHeight();
+  window.addEventListener("resize",syncHeaderHeight);
+  window.addEventListener("orientationchange",syncHeaderHeight);
+  // re-measure shortly after load too, in case web fonts shift the header's
+  // height after the initial paint (fonts can load a beat after first render)
+  setTimeout(syncHeaderHeight,400);
 }
 init();
 </script>
